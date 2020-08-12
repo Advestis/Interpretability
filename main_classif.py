@@ -5,6 +5,7 @@ import pandas as pd
 import subprocess
 import random
 
+from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
@@ -21,7 +22,11 @@ target_dict = {'crx': 'y',
                'haberman': 'survival',
                'heart': 'y',
                'ionosphere': 'y',
-               'bupa': 'selector'}
+               'bupa': 'selector',
+               'wine': 'quality',
+               'speaker': 'language',
+               'covertype': 'Cover_Type',
+               'student': 'atd'}
 
 racine_path = dirname(__file__)
 data_path = r'/home/vincent/Documents/Data/Classification/'
@@ -43,41 +48,47 @@ def load_data(name: str):
     -------
     data: a pandas DataFrame
     """
-    if name == 'crx':
-        data = pd.read_csv(join(data_path, 'Credit Approval/crx.csv'))
-        data['Att1'] = [1 if x == 'b' else 0 for x in data['Att1'].values]
-        data['Att4'] = [1 if x == 'y' else 0 for x in data['Att4'].values]
-        data['Att5'] = [1 if x == 'g' else 0 for x in data['Att5'].values]
-        data['Att9'] = [1 if x == 't' else 0 for x in data['Att9'].values]
-        data['Att10'] = [1 if x == 't' else 0 for x in data['Att10'].values]
-        data['Att12'] = [1 if x == 't' else 0 for x in data['Att12'].values]
-        data['Att13'] = [1 if x == 'g' else 0 for x in data['Att13'].values]
-        # data['y'] = [1 if x == '+' else 0 for x in data['y'].values]
-
-        data = data.drop(['Att6', 'Att7'], axis=1)
-    elif name == 'german':
-        data = pd.read_csv(join(data_path, 'Credit German/german_num.csv'))
-    elif name == 'haberman':
-        data = pd.read_csv(join(data_path, 'Haberman/haberman.csv'))
-    elif name == 'heart':
-        data = pd.read_csv(join(data_path, 'Heart Statlog/heart.csv'))
-    elif name == 'ionosphere':
-        data = pd.read_csv(join(data_path, 'Ionosphere/ionosphere.csv'))
-    elif name == 'bupa':
-        data = pd.read_csv(join(data_path, 'Liver Disorders/bupa.csv'))
+    # if name == 'crx':
+    #     data = pd.read_csv(join(data_path, 'Credit Approval/crx.csv'))
+    #     data['Att1'] = [1 if x == 'b' else 0 for x in data['Att1'].values]
+    #     # data['Att4'] = [1 if x == 'y' else 0 for x in data['Att4'].values]
+    #     # data['Att5'] = [1 if x == 'g' else 0 for x in data['Att5'].values]
+    #     data['Att9'] = [1 if x == 't' else 0 for x in data['Att9'].values]
+    #     data['Att10'] = [1 if x == 't' else 0 for x in data['Att10'].values]
+    #     data['Att12'] = [1 if x == 't' else 0 for x in data['Att12'].values]
+    #     # data['Att13'] = [1 if x == 'g' else 0 for x in data['Att13'].values]
+    #     # data['y'] = [1 if x == '+' else 0 for x in data['y'].values]
+    #
+    #     data = data.drop(['Att4', 'Att5', 'Att6', 'Att7', 'Att13'], axis=1)
+    # elif name == 'german':
+    #     data = pd.read_csv(join(data_path, 'Credit German/german_num.csv'))
+    # elif name == 'haberman':
+    #     data = pd.read_csv(join(data_path, 'Haberman/haberman.csv'))
+    # elif name == 'heart':
+    #     data = pd.read_csv(join(data_path, 'Heart Statlog/heart.csv'))
+    # elif name == 'ionosphere':
+    #     data = pd.read_csv(join(data_path, 'Ionosphere/ionosphere.csv'))
+    # elif name == 'bupa':
+    #     data = pd.read_csv(join(data_path, 'Liver Disorders/bupa.csv'))
+    if name == 'wine':
+        data = pd.read_csv(join(data_path, 'Wine/wine.csv'), sep=';')
+    elif name == 'speaker':
+        data = pd.read_csv(join(data_path, 'Speaker/speaker.csv'))
+    elif name == 'covertype':
+        data = pd.read_csv(join(data_path, 'CoverType/covertype.csv'))
+    elif name == 'student':
+        data = pd.read_csv(join(data_path, 'Student/student.csv'))
     else:
         raise ValueError('Not tested dataset')
     return data.dropna()
 
 
 if __name__ == '__main__':
-    seed = 42
-    np.random.seed(seed)
-    test_size = 0.3
+    test_size = 0.2
 
     # RF parameters
     tree_size = 4  # number of leaves by tree
-    max_rules = 10000  # total number of rules generated from tree ensembles
+    max_rules = 2000  # total number of rules generated from tree ensembles
     nb_estimator = int(np.ceil(max_rules / tree_size))  # Number of tree
 
     # AdBoost and GradientBoosting
@@ -89,151 +100,104 @@ if __name__ == '__main__':
     lmax = 2
 
     q = 10
-
+    nb_simu = 10
+    res_dict = {}
     #  Data parameters
-    for data_name in ['crx', 'german', 'haberman', 'heart', 'inosphere', 'bupa']:
+    for data_name in ['speaker', 'student', 'wine', 'covertype']:
         print('')
         print('===== ', data_name.upper(), ' =====')
+        res_dict['DT'] = []
+        res_dict['RIPPER'] = []
+        res_dict['PART'] = []
 
-        # ## Data Generation
-        dataset = load_data(data_name)
-        target = target_dict[data_name]
-        y = dataset[target]
-        X = dataset.drop(target, axis=1)
-        features = X.columns
-        X = X[features]
+        for simu in range(nb_simu):
+            # ## Data Generation
+            dataset = load_data(data_name)
+            target = target_dict[data_name]
+            y = dataset[target]
+            X = dataset.drop(target, axis=1)
+            features = X.columns
+            X = X[features]
+            if data_name == 'student':
+                le = preprocessing.LabelEncoder()
+                for col in features:
+                    X[col] = le.fit_transform(X[col])
+            if data_name == 'covertype':
+                id_kept = random.sample(range(X.shape[0]), 10000)
+                X = X.iloc[id_kept]
+                y = y.iloc[id_kept]
 
-        # ### Splitting data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size,
-                                                            random_state=seed)
-        if test_size == 0.0:
-            X_test = X_train
-            y_test = y_train
+            # ### Splitting data
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+            if test_size == 0.0:
+                X_test = X_train
+                y_test = y_train
 
-        X_train.to_csv(pathx, index=False)
-        y_train.to_csv(pathy, index=False, header=False)
-        X_test.to_csv(pathx_test, index=False)
-        n_train = len(X_train)
-        d = X_train.shape[1]
+            X_train.to_csv(pathx, index=False)
+            y_train.to_csv(pathy, index=False, header=False)
+            X_test.to_csv(pathx_test, index=False)
+            n_train = len(X_train)
+            d = X_train.shape[1]
 
-        sub_id = random.sample(list(range(n_train)), int(n_train / 2))
-        sub_id2 = list(filter(lambda i: i not in sub_id, range(n_train)))
-        X1 = X_train.iloc[sub_id]
-        X2 = X_train.iloc[sub_id2]
-        y1 = y_train.iloc[sub_id]
-        y2 = y_train.iloc[sub_id2]
+            sub_id = random.sample(list(range(n_train)), int(n_train / 2))
+            sub_id2 = list(filter(lambda i: i not in sub_id, range(n_train)))
+            X1 = X_train.iloc[sub_id]
+            X2 = X_train.iloc[sub_id2]
+            y1 = y_train.iloc[sub_id]
+            y2 = y_train.iloc[sub_id2]
 
-        y_train = y_train.values
-        y_test = y_test.values
-        X_train = X_train.values  # To get only numerical variables
-        X_test = X_test.values
+            y_train = y_train.values
+            y_test = y_test.values
+            X_train = X_train.values  # To get only numerical variables
+            X_test = X_test.values
 
-        bins_dict = {}
-        for k in range(d):
-            xcol = X_train[:, k]
-            if len(set(xcol)) > q:
-                if type(xcol[0]) == str:
-                    bins_dict[features[k]] = sorted(set(xcol))
+            bins_dict = {}
+            for k in range(d):
+                xcol = X_train[:, k]
+                if len(set(xcol)) > q:
+                    if type(xcol[0]) == str:
+                        bins_dict[features[k]] = sorted(set(xcol))
+                    else:
+                        var_bins = find_bins(xcol, q)
+                        bins_dict[features[k]] = var_bins
                 else:
-                    var_bins = find_bins(xcol, q)
-                    bins_dict[features[k]] = var_bins
-            else:
-                bins_dict[features[k]] = sorted(set(xcol))
-
-        with open('output_rfile.txt', 'w') as f:
-            subprocess.call([r_script, "--no-save", "--no-restore",
-                             "--verbose", "--vanilla", pathr,
-                             pathx, pathy, pathx_test, 'TRUE'],
-                            stdout=f, stderr=subprocess.STDOUT)
-
-        pred_ripper = pd.read_csv(join(racine_path, 'ripper_pred.csv'))['x'].values
-        pred_part = pd.read_csv(join(racine_path, 'part_pred.csv'))['x'].values
-        rules_ripper = pd.read_csv(join(racine_path, 'ripper_rules.csv'))
-        rules_part = pd.read_csv(join(racine_path, 'part_rules.csv'))
-        ripper_rs = make_rs_from_r(rules_ripper, features.to_list(), X_train.min(axis=0),
-                                   X_train.max(axis=0))
-        part_rs = make_rs_from_r(rules_part, features.to_list(), X_train.min(axis=0),
-                                 X_train.max(axis=0))
-
-        # pred_sirus = pd.read_csv(join(racine_path, 'sirus_pred.csv'))['x'].values
-        # pred_nh = pd.read_csv(join(racine_path, 'nh_pred.csv'))['x'].values
-        # rules_sirus = pd.read_csv(join(racine_path, 'sirus_rules.csv'))
-        # rules_nh = pd.read_csv(join(racine_path, 'nh_rules.csv'))
-        #
-        # sirus_rs = make_rs_from_r(rules_sirus, features.to_list(), X_train.min(axis=0),
-        #                           X_train.max(axis=0))
-        # nh_rs = make_rs_from_r(rules_nh, features.to_list(), X_train.min(axis=0),
-        #                        X_train.max(axis=0))
-
-        subsample = min(0.5, (100 + 6 * np.sqrt(len(y_train))) / len(y_train))
-
-        # ## Decision Tree
-        tree = DecisionTreeClassifier(max_leaf_nodes=20,  # tree_size,
-                                      random_state=seed)
-        tree.fit(X_train, y_train)
-
-        tree_rules = extract_rules_from_tree(tree, features, X_train.min(axis=0),
-                                             X_train.max(axis=0))
-
-        # # ## RuleFit
-        # rule_fit = rulefit.RuleFit(tree_size=tree_size,
-        #                            max_rules=max_rules,
-        #                            random_state=seed,
-        #                            max_iter=2000)
-        # rule_fit.fit(X_train, y_train)
-        #
-        # # ### RuleFit rules part
-        # rules = rule_fit.get_rules()
-        # rules = rules[rules.coef != 0].sort_values(by="support")
-        # rules = rules.loc[rules['type'] == 'rule']
-        #
-        # # ### RuleFit linear part
-        # lin = rule_fit.get_rules()
-        # lin = lin[lin.coef != 0].sort_values(by="support")
-        # lin = lin.loc[lin['type'] == 'linear']
-        #
-        # rulefit_rules = extract_rules_rulefit(rules, features, X_train.min(axis=0),
-        #                                       X_train.max(axis=0))
-
-        # ## Errors calculation
-        pred_tree = tree.predict(X_test)
-        # pred_rulefit = rule_fit.predict(X_test)
-
-        rs_dict = {  # 'Sirus': [], 'NH': [],
-                   'Ripper': [], 'Part': [], 'DT': [],
-            # 'RuleFit': []
-        }
-        for sub_x, sub_y in zip([X1, X2], [y1, y2]):
-            sub_x.to_csv(pathx, index=False)
-            sub_y.to_csv(pathy, index=False)
+                    bins_dict[features[k]] = sorted(set(xcol))
 
             with open('output_rfile.txt', 'w') as f:
                 subprocess.call([r_script, "--no-save", "--no-restore",
                                  "--verbose", "--vanilla", pathr,
-                                 pathx, pathy, pathx_test, 'FALSE'],
+                                 pathx, pathy, pathx_test, 'TRUE'],
                                 stdout=f, stderr=subprocess.STDOUT)
 
-            # rules_sirus = pd.read_csv(join(racine_path, 'sirus_rules.csv'))
-            # rules_nh = pd.read_csv(join(racine_path, 'nh_rules.csv'))
+            pred_ripper = pd.read_csv(join(racine_path, 'ripper_pred.csv'))['x'].values
+            pred_part = pd.read_csv(join(racine_path, 'part_pred.csv'))['x'].values
             rules_ripper = pd.read_csv(join(racine_path, 'ripper_rules.csv'))
             rules_part = pd.read_csv(join(racine_path, 'part_rules.csv'))
+            ripper_rs = make_rs_from_r(rules_ripper, features.to_list(), X_train.min(axis=0),
+                                       X_train.max(axis=0))
+            part_rs = make_rs_from_r(rules_part, features.to_list(), X_train.min(axis=0),
+                                     X_train.max(axis=0))
 
-            # rs_dict['Sirus'] += [make_rs_from_r(rules_sirus, features.to_list(),
-            #                                     X_train.min(axis=0), X_train.max(axis=0))]
-            # rs_dict['NH'] += [make_rs_from_r(rules_nh, features.to_list(), X_train.min(axis=0),
-            #                                  X_train.max(axis=0))]
-            rs_dict['Ripper'] += [make_rs_from_r(rules_ripper, features.to_list(),
-                                                 X_train.min(axis=0), X_train.max(axis=0))]
-            rs_dict['Part'] += [make_rs_from_r(rules_part, features.to_list(), X_train.min(axis=0),
-                                               X_train.max(axis=0))]
+            # pred_sirus = pd.read_csv(join(racine_path, 'sirus_pred.csv'))['x'].values
+            # pred_nh = pd.read_csv(join(racine_path, 'nh_pred.csv'))['x'].values
+            # rules_sirus = pd.read_csv(join(racine_path, 'sirus_rules.csv'))
+            # rules_nh = pd.read_csv(join(racine_path, 'nh_rules.csv'))
+            #
+            # sirus_rs = make_rs_from_r(rules_sirus, features.to_list(), X_train.min(axis=0),
+            #                           X_train.max(axis=0))
+            # nh_rs = make_rs_from_r(rules_nh, features.to_list(), X_train.min(axis=0),
+            #                        X_train.max(axis=0))
 
-            tree = DecisionTreeClassifier(max_leaf_nodes=20,  # tree_size,
-                                          random_state=seed)
+            subsample = min(0.5, (100 + 6 * np.sqrt(len(y_train))) / len(y_train))
+
+            # ## Decision Tree
+            tree = DecisionTreeClassifier(max_leaf_nodes=20)
             tree.fit(X_train, y_train)
 
-            rs_dict['DT'] += [extract_rules_from_tree(tree, features, X_train.min(axis=0),
-                                                      X_train.max(axis=0))]
+            tree_rules = extract_rules_from_tree(tree, features, X_train.min(axis=0),
+                                                 X_train.max(axis=0))
 
+            # # ## RuleFit
             # rule_fit = rulefit.RuleFit(tree_size=tree_size,
             #                            max_rules=max_rules,
             #                            random_state=seed,
@@ -245,40 +209,93 @@ if __name__ == '__main__':
             # rules = rules[rules.coef != 0].sort_values(by="support")
             # rules = rules.loc[rules['type'] == 'rule']
             #
-            # rs_dict['RuleFit'] += [extract_rules_rulefit(rules, features, X_train.min(axis=0),
-            #                                              X_train.max(axis=0))]
+            # # ### RuleFit linear part
+            # lin = rule_fit.get_rules()
+            # lin = lin[lin.coef != 0].sort_values(by="support")
+            # lin = lin.loc[lin['type'] == 'linear']
+            #
+            # rulefit_rules = extract_rules_rulefit(rules, features, X_train.min(axis=0),
+            #                                       X_train.max(axis=0))
 
+            # ## Errors calculation
+            pred_tree = tree.predict(X_test)
+            # pred_rulefit = rule_fit.predict(X_test)
+
+            rs_dict = {'Ripper': [], 'Part': [], 'DT': []}
+
+            for sub_x, sub_y in zip([X1, X2], [y1, y2]):
+                sub_x.to_csv(pathx, index=False)
+                sub_y.to_csv(pathy, index=False)
+
+                with open('output_rfile.txt', 'w') as f:
+                    subprocess.call([r_script, "--no-save", "--no-restore",
+                                     "--verbose", "--vanilla", pathr,
+                                     pathx, pathy, pathx_test, 'FALSE'],
+                                    stdout=f, stderr=subprocess.STDOUT)
+
+                rules_ripper = pd.read_csv(join(racine_path, 'ripper_rules.csv'))
+                rules_part = pd.read_csv(join(racine_path, 'part_rules.csv'))
+
+                rs_dict['Ripper'] += [make_rs_from_r(rules_ripper, features.to_list(),
+                                                     X_train.min(axis=0), X_train.max(axis=0))]
+                rs_dict['Part'] += [make_rs_from_r(rules_part, features.to_list(),
+                                                   X_train.min(axis=0),
+                                                   X_train.max(axis=0))]
+
+                tree = DecisionTreeClassifier(max_leaf_nodes=20)
+                tree.fit(X_train, y_train)
+
+                rs_dict['DT'] += [extract_rules_from_tree(tree, features, X_train.min(axis=0),
+                                                          X_train.max(axis=0))]
+
+            simp = [simplicity(tree_rules), simplicity(ripper_rs), simplicity(part_rs)]
+            simp = min(simp) / np.array(simp)
+            if simu == 0:
+                res_dict['DT'] = [[predictivity_classif(pred_tree, y_test),
+                                   q_stability(rs_dict['DT'][0], rs_dict['DT'][1],  X_train,
+                                               q=q, bins_dict=bins_dict),
+                                   simp[0]]]
+                res_dict['RIPPER'] = [[predictivity_classif(pred_ripper, y_test),
+                                       q_stability(rs_dict['Ripper'][0], rs_dict['Ripper'][1],
+                                                   X_train, q=q, bins_dict=bins_dict),
+                                       simp[1]]]
+                res_dict['PART'] = [[predictivity_classif(pred_part, y_test),
+                                     q_stability(rs_dict['Part'][0], rs_dict['Part'][1],
+                                                 X_train, q=q, bins_dict=bins_dict),
+                                     simp[2]]]
+
+            else:
+                res_dict['DT'] = np.append(res_dict['DT'],
+                                           [[predictivity_classif(pred_tree, y_test),
+                                             q_stability(rs_dict['DT'][0], rs_dict['DT'][1],
+                                                         X_train, q=q, bins_dict=bins_dict),
+                                             simp[0]]], axis=0)
+                res_dict['RIPPER'] = np.append(res_dict['RIPPER'],
+                                               [[predictivity_classif(pred_ripper, y_test),
+                                                 q_stability(rs_dict['Ripper'][0],
+                                                             rs_dict['Ripper'][1],
+                                                             X_train, q=q, bins_dict=bins_dict),
+                                                 simp[1]]], axis=0)
+                res_dict['PART'] = np.append(res_dict['PART'],
+                                             [[predictivity_classif(pred_part, y_test),
+                                               q_stability(rs_dict['Part'][0], rs_dict['Part'][1],
+                                                           X_train, q=q, bins_dict=bins_dict),
+                                               simp[2]]], axis=0)
         # ## Results.
         print('Predictivity score')
         print('----------------------')
-        print('Decision tree predicitivty score:', predictivity_classif(pred_tree, y_test))
-        # print('RuleFit predicitivty score:', predictivity(pred_rulefit, y_test))
-        # print('SIRUS predicitivty score:', predictivity(pred_sirus, y_test))
-        # print('NH predicitivty score:', predictivity(pred_nh, y_test))
-        print('RIPPER predicitivty score:', predictivity_classif(pred_ripper, y_test))
-        print('PART predicitivty score:', predictivity_classif(pred_part, y_test))
+        print('Decision tree predicitivty score:', np.mean(res_dict['DT'][:, 0]))
+        print('RIPPER predicitivty score:', np.mean(res_dict['RIPPER'][:, 0]))
+        print('PART predicitivty score:', np.mean(res_dict['PART'][:, 0]))
         print('')
         print('q-Stability score')
         print('----------------------')
-        print('Decision tree stability score:', q_stability(rs_dict['DT'][0], rs_dict['DT'][1],
-                                                            X_train, q=q, bins_dict=bins_dict))
-        # print('RuleFit stability score:', q_stability(rs_dict['RuleFit'], q=q,
-        #                                               bins_dict=bins_dict))
-        # print('SIRUS stability score:', q_stability(rs_dict['Sirus'], q=q,
-        #                                             bins_dict=bins_dict))
-        # print('NH stability score:', q_stability(rs_dict['NH'], q=q,
-        #                                          bins_dict=bins_dict))
-        print('RIPPER stability score:', q_stability(rs_dict['Ripper'][0], rs_dict['Ripper'][1],
-                                                     X_train, q=q, bins_dict=bins_dict))
-        print('PART stability score:', q_stability(rs_dict['Part'][0], rs_dict['Part'][1],
-                                                   X_train, q=q, bins_dict=bins_dict))
+        print('Decision tree q-Stability score:', np.mean(res_dict['DT'][:, 1]))
+        print('RIPPER q-Stability score:', np.mean(res_dict['RIPPER'][:, 1]))
+        print('PART q-Stability score:', np.mean(res_dict['PART'][:, 1]))
         print('')
         print('Simplicity score')
         print('----------------------')
-        print('Decision tree simplicity score:', simplicity(tree_rules))
-        # print('RuleFit simplicity score:', simplicity(rulefit_rules))
-        # print('Linear relation:', len(lin))
-        # print('SIRUS simplicity score:', simplicity(sirus_rs))
-        # print('NH simplicity score:', simplicity(nh_rs))
-        print('RIPPER stability score:', simplicity(ripper_rs))
-        print('PART stability score:', simplicity(part_rs))
+        print('Decision tree Simplicity score:', np.mean(res_dict['DT'][:, 2]))
+        print('RIPPER Simplicity score:', np.mean(res_dict['RIPPER'][:, 2]))
+        print('PART Simplicity score:', np.mean(res_dict['PART'][:, 2]))

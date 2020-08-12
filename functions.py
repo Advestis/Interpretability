@@ -12,9 +12,9 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.tree import _tree
 
 
-def predictivity(y_hat, y):
+def predictivity(y_hat, y, deno):
     assert len(y_hat) == len(y)
-    return r2_score(y_hat, y)
+    return 1 - np.mean((y - y_hat) ** 2) / deno
 
 
 def predictivity_classif(y_hat, y):
@@ -111,7 +111,7 @@ def q_stability(rs1, rs2, X, q=None, bins_dict=None):
     else:
         q_rs1 = rs1
         q_rs2 = rs2
-    return 1 - 2*len(set(q_rs1).intersection(q_rs2)) / (len(q_rs1) + len(q_rs2))
+    return 2*len(set(q_rs1).intersection(q_rs2)) / (len(q_rs1) + len(q_rs2))
 
 
 def extract_rules_rulefit(rules: pd.DataFrame,
@@ -268,6 +268,7 @@ def make_rs_from_r(df, features_list, xmin, xmax):
 
             for j in range(cp):
                 feature_name = rl_i[j].split(' in ')[0]
+                feature_name = feature_name.replace('.', ' ')
                 feature_id = features_list.index(feature_name)
                 bmin = rl_i[j].split(' in ')[1].split(';')[0].replace(" ", "")
                 if bmin == '-Inf':

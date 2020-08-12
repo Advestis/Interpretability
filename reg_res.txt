@@ -1,0 +1,75 @@
+=====  PROSTATE  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.6871420488598592
+Covering Algorithm GB predicitivty score: 0.43985913976588253
+RuleFit predicitivty score: 0.49710798717398424
+SIRUS predicitivty score: 0.38159770207680055
+NodeHarvest predicitivty score: 0.4052612208622291
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 0.9210526315789472
+Covering Algorithm GB q-Stability score: 0.0
+RuleFit q-Stability score: 0.8758620689655172
+SIRUS q-Stability score: 1.0
+NodeHarvest q-Stability score: 0.8930440327690473
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 0.11346153846153847
+Covering Algorithm GB Simplicity score: 1.0
+RuleFit Simplicity score: 0.027570093457943926
+SIRUS Simplicity score: 0.9076923076923078
+NodeHarvest Simplicity score: 0.09493161705551087
+
+=====  OZONE  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.5717202887579986
+Covering Algorithm GB predicitivty score: 0.3858674300933399
+RuleFit predicitivty score: 0.27149346218538334
+SIRUS predicitivty score: 0.3287854210343167
+NodeHarvest predicitivty score: 0.3244513398306325
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 0.9736842105263157
+Covering Algorithm GB q-Stability score: 0.11918414918414919
+RuleFit q-Stability score: 0.9818181818181818
+SIRUS q-Stability score: 1.0
+NodeHarvest q-Stability score: 0.8908731317893513
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 0.08166666666666668
+Covering Algorithm GB Simplicity score: 1.0
+RuleFit Simplicity score: 0.013315217391304349
+SIRUS Simplicity score: 0.7424242424242425
+NodeHarvest Simplicity score: 0.10010214504596528
+
+
+=====  DIABETES  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.6103587119765358
+Covering Algorithm GB predicitivty score: 0.6161812232151547
+RuleFit predicitivty score: 0.7901598867915214
+SIRUS predicitivty score: 0.6031854700947912
+NodeHarvest predicitivty score: 0.564315174741143
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 0.9736842105263157
+Covering Algorithm GB q-Stability score: 0.02727272727272727
+RuleFit q-Stability score: 0.9937888198757763
+SIRUS q-Stability score: 1.0
+NodeHarvest q-Stability score: 0.9262356453252003
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 0.12416666666666668
+Covering Algorithm GB Simplicity score: 0.6535087719298246
+RuleFit Simplicity score: 0.013127753303964759
+SIRUS Simplicity score: 1.0
+NodeHarvest Simplicity score: 0.16989737742303307

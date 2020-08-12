@@ -10,6 +10,7 @@ do_pred = args[4]
 X <- read.csv(file=pathx, header=TRUE, sep=",")
 y <- read.csv(file=pathy, header=FALSE, sep=",")
 y <- y$V1
+y <- as.character(y)
 
 if(do_pred){X_test <- read.csv(file=pathx_test, header=TRUE, sep=",")}
 
@@ -27,7 +28,7 @@ ripper_rules = str_split(temp,'\n')[[1]]
 ripper_rules = ripper_rules[ripper_rules != '']
 ripper_rules = ripper_rules[4:length(ripper_rules)-1]
 ripper_rules = gsub("and", "AND", ripper_rules)
-ripper_rules = gsub("X.", "", ripper_rules)
+ripper_rules = str_remove_all(ripper_rules, fixed('X.'))
 ripper_rules = gsub("\\(", "", ripper_rules)
 ripper_rules = gsub("\\)", "", ripper_rules)
 ripper_rules = gsub(" =>.*", "", ripper_rules)
@@ -40,21 +41,29 @@ for(i in 1:length(ripper_rules))
     temp = strsplit(r," AND ")[[1]]
     if(length(temp) > 0)
     {
+        new_rules = ''
         for(j in 1:length(temp))
         {
             if(grepl('>=', temp[j], fixed=TRUE))
             {
                 feat = strsplit(temp[j],' >= ')[[1]][1]
                 val = strsplit(temp[j],' >= ')[[1]][2]
-                ripper_rules[i] = gsub(paste(feat, " >= ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), ripper_rules[i])
+                new_rules =paste(new_rules, gsub(paste(feat, " >= ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), temp[j]), sep='')
             }
-            if(grepl('>', temp[j], fixed=TRUE))
+            else if(grepl('>', temp[j], fixed=TRUE))
             {
                 feat = strsplit(temp[j],' > ')[[1]][1]
                 val = strsplit(temp[j],' > ')[[1]][2]
-                ripper_rules[i] = gsub(paste(feat, " > ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), ripper_rules[i])
+                new_rules =paste(new_rules, gsub(paste(feat, " > ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), temp[j]), sep='')
             }
+            else{
+                new_rules =paste(new_rules, temp[j], sep='')
+                }
+            if(j < length(temp)){
+                new_rules =paste(new_rules, ' AND ', sep='')
+                }
         }
+        ripper_rules[i] = new_rules
     }
 }
 ripper_rules <- data.frame('Rules'=matrix(unlist(ripper_rules), nrow=length(ripper_rules), byrow=T))
@@ -69,7 +78,7 @@ int_part = length(str_split(temp,'X.')) - 1
 part_rules = str_split(temp,'\n\n')[[1]]
 part_rules = part_rules[3:length(part_rules)-1]
 part_rules = gsub("\n", " ", part_rules)
-part_rules = gsub("X.", "", part_rules)
+part_rules = str_remove_all(part_rules, fixed('X.'))
 part_rules = gsub(":.*", " ", part_rules)
 part_rules = gsub(" < ", " in -Inf;", part_rules)
 part_rules = gsub(" <= ", " in -Inf;", part_rules)
@@ -80,21 +89,29 @@ for(i in 1:length(part_rules))
     temp = strsplit(r," AND ")[[1]]
     if(length(temp) > 0)
     {
+        new_rules = ''
         for(j in 1:length(temp))
         {
             if(grepl('>=', temp[j], fixed=TRUE))
             {
                 feat = strsplit(temp[j],' >= ')[[1]][1]
                 val = strsplit(temp[j],' >= ')[[1]][2]
-                part_rules[i] = gsub(paste(feat, " >= ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), part_rules[i])
+                new_rules =paste(new_rules, gsub(paste(feat, " >= ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), temp[j]), sep='')
             }
-            if(grepl('>', temp[j], fixed=TRUE))
+            else if(grepl('>', temp[j], fixed=TRUE))
             {
                 feat = strsplit(temp[j],' > ')[[1]][1]
                 val = strsplit(temp[j],' > ')[[1]][2]
-                part_rules[i] = gsub(paste(feat, " > ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), part_rules[i])
+                new_rules =paste(new_rules, gsub(paste(feat, " > ", val,  sep=''), paste(feat, " in ", val, ';Inf ', sep=''), temp[j]), sep='')
             }
+            else{
+                new_rules =paste(new_rules, temp[j], sep='')
+                }
+            if(j < length(temp)){
+                new_rules =paste(new_rules, ' AND ', sep='')
+                }
         }
+        part_rules[i] = new_rules
     }
 }
 part_rules <- data.frame('Rules'=matrix(unlist(part_rules), nrow=length(part_rules), byrow=T))

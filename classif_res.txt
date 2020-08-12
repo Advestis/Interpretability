@@ -1,0 +1,76 @@
+=====  SPEAKER  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.6666666666666667
+RIPPER predicitivty score: 0.6363636363636365
+PART predicitivty score: 0.696969696969697
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 1.0
+RIPPER q-Stability score: 1.0
+PART q-Stability score: 1.0
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 0.125
+RIPPER Simplicity score: 1.0
+PART Simplicity score: 0.38596491228070173
+
+=====  COVERTYPE  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.6979333333333333
+RIPPER predicitivty score: 0.7190333333333333
+PART predicitivty score: 0.7379333333333333
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 0.95
+RIPPER q-Stability score: 1.0
+PART q-Stability score: 0.999736842105263
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 1.0
+RIPPER Simplicity score: 0.5399449035812672
+PART Simplicity score: 0.02770396336292192
+
+=====  STUDENT  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.4749999999999999
+RIPPER predicitivty score: 0.4
+PART predicitivty score: 0.32500000000000007
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 1.0
+RIPPER q-Stability score: 1.0
+PART q-Stability score: 1.0
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 0.035211267605633804
+RIPPER Simplicity score: 1.0
+PART Simplicity score: 0.09433962264150944
+
+=====  WINE  =====
+Predictivity score
+----------------------
+Decision tree predicitivty score: 0.5306122448979592
+RIPPER predicitivty score: 0.5122448979591836
+PART predicitivty score: 0.5775510204081634
+
+q-Stability score
+----------------------
+Decision tree q-Stability score: 0.9210526315789472
+RIPPER q-Stability score: 1.0
+PART q-Stability score: 0.997032640949555
+
+Simplicity score
+----------------------
+Decision tree Simplicity score: 0.8582089552238806
+RIPPER Simplicity score: 1.0
+PART Simplicity score: 0.05024027959807777
+
