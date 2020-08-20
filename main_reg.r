@@ -16,7 +16,7 @@ library(nodeHarvest)
 ##############################
 ##          SIRUS           ##
 ##############################
-sirus.m <- sirus.fit(X, y, max.depth=3, verbose=FALSE)
+sirus.m <- sirus.fit(X, y, max.depth=2, verbose=FALSE)
 sirus_nbrules = length(sirus.m$rules)
 int_sirus <- 0
 for(i in 1:length(sirus.m$rules)){int_sirus = int_sirus + length(sirus.m$rules[[i]])}
@@ -41,7 +41,7 @@ sirus_rules <- data.frame('Rules'=matrix(unlist(sirus_rules), nrow=length(sirus_
 ##############################
 ##       nodeharvest        ##
 ##############################
-NH <- nodeHarvest(X, y, maxinter=3, silent=TRUE)
+NH <- nodeHarvest(X, y, maxinter=2, silent=TRUE)
 
 nh_rules = list()
 for(i in 1:length(NH$nodes)){

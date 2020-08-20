@@ -6,7 +6,7 @@ import subprocess
 import random
 
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.tree import DecisionTreeRegressor
 
 import rulefit
@@ -16,22 +16,25 @@ import CoveringAlgorithm.CA as CA
 # 'Install the package CoveringAlgorithm from Vincent Margot GitHub with the command'
 # 'pip install git+git://github.com/VincentM/CoveringAlgorithm.git')
 
+# import RIPE
+# 'Install the package CoveringAlgorithm from Vincent Margot GitHub with the command'
+# 'pip install git+git://github.com/VincentM/RIPE.git')
+
 from functions import predictivity, simplicity, q_stability, find_bins,\
     extract_rules_from_tree, extract_rules_rulefit, make_rs_from_r
+
+import warnings
+warnings.filterwarnings("ignore")
 
 target_dict = {'student_mat': 'G3',
                'student_por': 'G3',
                'student_mat_easy': 'G3',
                'student_por_easy': 'G3',
                'boston': 'MEDV',
-               'bike_hour': 'cnt',
-               'bike_day': 'cnt',
                'mpg': 'mpg',
                'machine': 'PRP',
                'abalone': 'Rings',
-               'prostate': 'lpsa',
-               'ozone': 'ozone',
-               'diabetes': 'Y'}
+               'ozone': 'ozone'}
 
 racine_path = dirname(__file__)
 data_path = r'/home/vincent/Documents/Data/Regression/'
@@ -75,13 +78,6 @@ def load_data(name: str):
         if 'easy' not in data_name:
             # For an harder exercise drop G1 and G2
             data = data.drop(['G1', 'G2'], axis=1)
-
-    elif name == 'bike_hour':
-        data = pd.read_csv(join(data_path, 'BikeSharing/hour.csv'), index_col=0)
-        data = data.set_index('dteday')
-    elif name == 'bike_day':
-        data = pd.read_csv(join(data_path, 'BikeSharing/day.csv'), index_col=0)
-        data = data.set_index('dteday')
     elif name == 'mpg':
         data = pd.read_csv(join(data_path, 'MPG/mpg.csv'))
     elif name == 'machine':
@@ -91,10 +87,6 @@ def load_data(name: str):
         data = pd.read_csv(join(data_path, 'Abalone/abalone.csv'))
     elif name == 'ozone':
         data = pd.read_csv(join(data_path, 'Ozone/ozone.csv'))
-    elif name == 'prostate':
-        data = pd.read_csv(join(data_path, 'Prostate/prostate.csv'), index_col=0)
-    elif name == 'diabetes':
-        data = pd.read_csv(join(data_path, 'Diabetes/diabetes.csv'), index_col=0)
     elif name == 'boston':
         from sklearn.datasets import load_boston
         boston_dataset = load_boston()
@@ -108,34 +100,31 @@ def load_data(name: str):
 
 if __name__ == '__main__':
     test_size = 0.2
+    np.random.seed(2020)
 
     # RF parameters
     tree_size = 4  # number of leaves by tree
     max_rules = 2000  # total number of rules generated from tree ensembles
     nb_estimator = int(np.ceil(max_rules / tree_size))  # Number of tree
 
-    # AdBoost and GradientBoosting
+    # GradientBoosting
     learning_rate = 0.1
 
     # Covering parameters
     alpha = 1. / 2 - 1 / 100.
     gamma = 0.95
-    lmax = 3
+    lmax = 2
 
     q = 10
     nb_simu = 10
     res_dict = {}
     #  Data parameters
-    for data_name in [# 'prostate',
-                      # 'ozone',
-                      # 'diabetes',
-                      'abalone',
-                      # 'machine',
-                      # 'mpg',
-                      # 'boston',
-                      # 'bike_hour',
-                      # 'student_por'
-                      ]:
+    for data_name in ['ozone',
+                      'machine',
+                      'mpg',
+                      'boston',
+                      'student_por',
+                      'abalone']:
         print('')
         print('===== ', data_name.upper(), ' =====')
 
@@ -212,11 +201,11 @@ if __name__ == '__main__':
             subsample = min(0.5, (100 + 6 * np.sqrt(len(y_train))) / len(y_train))
 
             # ## Decision Tree
-            tree = DecisionTreeRegressor(max_leaf_nodes=20)
+            tree = DecisionTreeRegressor(max_leaf_nodes=10)
             tree.fit(X_train, y_train)
 
             tree_rules = extract_rules_from_tree(tree, features, X_train.min(axis=0),
-                                                 X_train.max(axis=0))
+                                                 X_train.max(axis=0), get_leaf=True)
 
             # ## Covering Algorithm RandomForest
             ca_rf = CA.CA(alpha=alpha, gamma=gamma,
@@ -251,16 +240,26 @@ if __name__ == '__main__':
             rulefit_rules = extract_rules_rulefit(rules, features, X_train.min(axis=0),
                                                   X_train.max(axis=0))
 
+            # # ## RIPE
+            # ripe = RIPE.Learning(nb_bucket=q, cp=lmax, intermax=gamma)
+            # ripe.fit(X, y)
+
             # ## Errors calculation
             pred_tree = tree.predict(X_test)
             pred_CA_rf = ca_rf.predict(X_test)
             pred_CA_gb = ca_gb.predict(X_test)
             # pred_CA_ad = ca_ad.predict(X_test)
             pred_rulefit = rule_fit.predict(X_test)
+            # pred_ripe = ripe.predict(X_test)
 
-            rs_dict = {'Sirus': [], 'NH': [], 'DT': [], 'RuleFit': [], 'CA_GB': [],
-                       'CA_RF': []
-                      }
+            simp = [simplicity(tree_rules), simplicity(ca_rf.selected_rs),
+                    simplicity(ca_gb.selected_rs), simplicity(rulefit_rules),
+                    simplicity(sirus_rs), simplicity(nh_rs)]
+            # sum(ripe.selected_rs.get_rules_param('cp'))]
+            simp = min(simp) / np.array(simp)
+
+            rs_dict = {'Sirus': [], 'NH': [], 'DT': [], 'RuleFit': [], 'CA_GB': [], 'CA_RF': [],
+                       'RIPE': []}
             for sub_x, sub_y in zip([X1, X2], [y1, y2]):
                 sub_x.to_csv(pathx, index=False)
                 sub_y.to_csv(pathy, index=False)
@@ -279,11 +278,11 @@ if __name__ == '__main__':
                 rs_dict['NH'] += [make_rs_from_r(rules_nh, features.to_list(), X_train.min(axis=0),
                                                  X_train.max(axis=0))]
 
-                tree = DecisionTreeRegressor(max_leaf_nodes=20)
+                tree = DecisionTreeRegressor(max_leaf_nodes=10)
                 tree.fit(X_train, y_train)
 
                 rs_dict['DT'] += [extract_rules_from_tree(tree, features, X_train.min(axis=0),
-                                                          X_train.max(axis=0))]
+                                                          X_train.max(axis=0), get_leaf=True)]
 
                 rule_fit = rulefit.RuleFit(tree_size=tree_size,
                                            max_rules=max_rules)
@@ -315,10 +314,11 @@ if __name__ == '__main__':
                 ca_gb.fit(X=sub_x, y=sub_y, features=features)
                 rs_dict['CA_GB'] += [ca_gb.selected_rs]
 
-            simp = [simplicity(tree_rules), simplicity(ca_rf.selected_rs),
-                    simplicity(ca_gb.selected_rs), simplicity(rulefit_rules),
-                    simplicity(sirus_rs), simplicity(nh_rs)]
-            simp = min(simp) / np.array(simp)
+                # # ## RIPE
+                # ripe = RIPE.Learning(nb_bucket=q, cp=lmax, intermax=gamma)
+                # ripe.fit(sub_x, sub_y)
+                # rs_dict['RIPE'] += [ripe.selected_rs]
+
             if simu == 0:
                 res_dict['DT'] = [[predictivity(pred_tree, y_test, deno_mse),
                                    q_stability(rs_dict['DT'][0], rs_dict['DT'][1],  X_train,
@@ -344,48 +344,62 @@ if __name__ == '__main__':
                                    q_stability(rs_dict['NH'][0], rs_dict['NH'][1],
                                                X_train, q=q, bins_dict=bins_dict),
                                    simp[5]]]
+                # res_dict['RIPE'] = [[predictivity(pred_ripe, y_test, deno_mse),
+                #                      q_stability(rs_dict['RIPE'][0], rs_dict['RIPE'][1],
+                #                                  X_train, q=None, bins_dict=bins_dict),
+                #                      simp[6]]]
 
             else:
-                res_dict['DT'] = np.append(res_dict['DT'], [[predictivity(pred_tree, y_test, deno_mse),
-                                   q_stability(rs_dict['DT'][0], rs_dict['DT'][1],  X_train,
-                                               q=q, bins_dict=bins_dict),
-                                   simp[0]]], axis=0)
+                res_dict['DT'] = np.append(res_dict['DT'],
+                                           [[predictivity(pred_tree, y_test, deno_mse),
+                                             q_stability(rs_dict['DT'][0], rs_dict['DT'][1],
+                                                         X_train, q=q, bins_dict=bins_dict),
+                                             simp[0]]], axis=0)
                 res_dict['CA_RF'] = np.append(res_dict['CA_RF'],
                                               [[predictivity(pred_CA_rf, y_test, deno_mse),
                                                 q_stability(rs_dict['CA_RF'][0],
                                                             rs_dict['CA_RF'][1],
                                                             X_train, q=q, bins_dict=bins_dict),
-                                                simp[1]]],
-                                              axis=0)
-                res_dict['CA_GB'] = np.append(res_dict['CA_GB'], [[predictivity(pred_CA_gb, y_test, deno_mse),
-                                      q_stability(rs_dict['CA_GB'][0], rs_dict['CA_GB'][1],
-                                                  X_train, q=q, bins_dict=bins_dict),
-                                      simp[2]]],
-                                              axis=0)
-                res_dict['RuleFit'] = np.append(res_dict['RuleFit'], [[predictivity(pred_rulefit, y_test, deno_mse),
-                                        q_stability(rs_dict['RuleFit'][0], rs_dict['RuleFit'][1],
-                                                    X_train, q=q, bins_dict=bins_dict),
-                                        simp[3]]],
-                                                axis=0)
-                res_dict['Sirus'] = np.append(res_dict['Sirus'], [[predictivity(pred_sirus, y_test, deno_mse),
-                                      q_stability(rs_dict['Sirus'][0], rs_dict['Sirus'][1],
-                                                  X_train, q=q, bins_dict=bins_dict),
-                                      simp[4]]],
-                                              axis=0)
-                res_dict['NH'] = np.append(res_dict['NH'], [[predictivity(pred_nh, y_test, deno_mse),
-                                   q_stability(rs_dict['NH'][0], rs_dict['NH'][1],
-                                               X_train, q=q, bins_dict=bins_dict),
-                                   simp[5]]], axis=0)
+                                                simp[1]]], axis=0)
+                res_dict['CA_GB'] = np.append(res_dict['CA_GB'],
+                                              [[predictivity(pred_CA_gb, y_test, deno_mse),
+                                                q_stability(rs_dict['CA_GB'][0],
+                                                            rs_dict['CA_GB'][1],
+                                                            X_train, q=q, bins_dict=bins_dict),
+                                                simp[2]]], axis=0)
+                res_dict['RuleFit'] = np.append(res_dict['RuleFit'],
+                                                [[predictivity(pred_rulefit, y_test, deno_mse),
+                                                  q_stability(rs_dict['RuleFit'][0],
+                                                              rs_dict['RuleFit'][1],
+                                                              X_train, q=q, bins_dict=bins_dict),
+                                                  simp[3]]], axis=0)
+                res_dict['Sirus'] = np.append(res_dict['Sirus'],
+                                              [[predictivity(pred_sirus, y_test, deno_mse),
+                                                q_stability(rs_dict['Sirus'][0],
+                                                            rs_dict['Sirus'][1],
+                                                            X_train, q=q, bins_dict=bins_dict),
+                                                simp[4]]], axis=0)
+                res_dict['NH'] = np.append(res_dict['NH'],
+                                           [[predictivity(pred_nh, y_test, deno_mse),
+                                             q_stability(rs_dict['NH'][0], rs_dict['NH'][1],
+                                                         X_train, q=q, bins_dict=bins_dict),
+                                             simp[5]]], axis=0)
+                # res_dict['RIPE'] = np.append(res_dict['RIPE'],
+                #                            [[predictivity(pred_ripe, y_test, deno_mse),
+                #                              q_stability(rs_dict['RIPE'][0], rs_dict['RIPE'][1],
+                #                                          X_train, q=None, bins_dict=bins_dict),
+                #                              simp[6]]], axis=0)
 
         # ## Results.
         print('Predictivity score')
         print('----------------------')
-        print('Decision tree predicitivty score:',np.mean(res_dict['DT'][:, 0]))
+        print('Decision tree predicitivty score:', np.mean(res_dict['DT'][:, 0]))
         print('Covering Algorithm RF predicitivty score:', np.mean(res_dict['CA_RF'][:, 0]))
         print('Covering Algorithm GB predicitivty score:', np.mean(res_dict['CA_GB'][:, 0]))
         print('RuleFit predicitivty score:', np.mean(res_dict['RuleFit'][:, 0]))
         print('SIRUS predicitivty score:', np.mean(res_dict['Sirus'][:, 0]))
         print('NodeHarvest predicitivty score:', np.mean(res_dict['NH'][:, 0]))
+        # print('RIPE predicitivty score:', np.mean(res_dict['RIPE'][:, 0]))
         print('----------------------')
         print('Decision tree predicitivty score:', np.std(res_dict['DT'][:, 0]))
         print('Covering Algorithm RF predicitivty score:', np.std(res_dict['CA_RF'][:, 0]))
@@ -393,6 +407,7 @@ if __name__ == '__main__':
         print('RuleFit predicitivty score:', np.std(res_dict['RuleFit'][:, 0]))
         print('SIRUS predicitivty score:', np.std(res_dict['Sirus'][:, 0]))
         print('NodeHarvest predicitivty score:', np.std(res_dict['NH'][:, 0]))
+        # print('RIPE predicitivty score:', np.std(res_dict['RIPE'][:, 0]))
         print('')
         print('q-Stability score')
         print('----------------------')
@@ -402,6 +417,7 @@ if __name__ == '__main__':
         print('RuleFit q-Stability score:', np.mean(res_dict['RuleFit'][:, 1]))
         print('SIRUS q-Stability score:', np.mean(res_dict['Sirus'][:, 1]))
         print('NodeHarvest q-Stability score:', np.mean(res_dict['NH'][:, 1]))
+        # print('RIPE q-Stability score:', np.mean(res_dict['RIPE'][:, 1]))
         print('----------------------')
         print('Decision tree q-Stability score:', np.std(res_dict['DT'][:, 1]))
         print('Covering Algorithm RF q-Stability score:', np.std(res_dict['CA_RF'][:, 1]))
@@ -409,6 +425,7 @@ if __name__ == '__main__':
         print('RuleFit q-Stability score:', np.std(res_dict['RuleFit'][:, 1]))
         print('SIRUS q-Stability score:', np.std(res_dict['Sirus'][:, 1]))
         print('NodeHarvest q-Stability score:', np.std(res_dict['NH'][:, 1]))
+        # print('RIPE q-Stability score:', np.std(res_dict['RIPE'][:, 1]))
         print('')
         print('Simplicity score')
         print('----------------------')
@@ -418,6 +435,7 @@ if __name__ == '__main__':
         print('RuleFit Simplicity score:', np.mean(res_dict['RuleFit'][:, 2]))
         print('SIRUS Simplicity score:', np.mean(res_dict['Sirus'][:, 2]))
         print('NodeHarvest Simplicity score:', np.mean(res_dict['NH'][:, 2]))
+        # print('RIPE Simplicity score:', np.mean(res_dict['RIPE'][:, 2]))
         print('----------------------')
         print('Decision tree Simplicity score:', np.std(res_dict['DT'][:, 2]))
         print('Covering Algorithm RF Simplicity score:', np.std(res_dict['CA_RF'][:, 2]))
@@ -425,4 +443,4 @@ if __name__ == '__main__':
         print('RuleFit Simplicity score:', np.std(res_dict['RuleFit'][:, 2]))
         print('SIRUS Simplicity score:', np.std(res_dict['Sirus'][:, 2]))
         print('NodeHarvest Simplicity score:', np.std(res_dict['NH'][:, 2]))
-        pass
+        # print('RIPE Simplicity score:', np.std(res_dict['RIPE'][:, 2]))

@@ -9,13 +9,11 @@ from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
-import rulefit
-# 'Install the package rulefit from Christophe Molnar GitHub with the command'
-# 'pip install git+git://github.com/christophM/rulefit.git')
-
 from functions import predictivity_classif, simplicity, q_stability, find_bins,\
-    extract_rules_from_tree, extract_rules_rulefit, make_rs_from_r
+    extract_rules_from_tree, make_rs_from_r
 
+import warnings
+warnings.filterwarnings("ignore")
 
 target_dict = {'crx': 'y',
                'german': 'y',
@@ -48,28 +46,6 @@ def load_data(name: str):
     -------
     data: a pandas DataFrame
     """
-    # if name == 'crx':
-    #     data = pd.read_csv(join(data_path, 'Credit Approval/crx.csv'))
-    #     data['Att1'] = [1 if x == 'b' else 0 for x in data['Att1'].values]
-    #     # data['Att4'] = [1 if x == 'y' else 0 for x in data['Att4'].values]
-    #     # data['Att5'] = [1 if x == 'g' else 0 for x in data['Att5'].values]
-    #     data['Att9'] = [1 if x == 't' else 0 for x in data['Att9'].values]
-    #     data['Att10'] = [1 if x == 't' else 0 for x in data['Att10'].values]
-    #     data['Att12'] = [1 if x == 't' else 0 for x in data['Att12'].values]
-    #     # data['Att13'] = [1 if x == 'g' else 0 for x in data['Att13'].values]
-    #     # data['y'] = [1 if x == '+' else 0 for x in data['y'].values]
-    #
-    #     data = data.drop(['Att4', 'Att5', 'Att6', 'Att7', 'Att13'], axis=1)
-    # elif name == 'german':
-    #     data = pd.read_csv(join(data_path, 'Credit German/german_num.csv'))
-    # elif name == 'haberman':
-    #     data = pd.read_csv(join(data_path, 'Haberman/haberman.csv'))
-    # elif name == 'heart':
-    #     data = pd.read_csv(join(data_path, 'Heart Statlog/heart.csv'))
-    # elif name == 'ionosphere':
-    #     data = pd.read_csv(join(data_path, 'Ionosphere/ionosphere.csv'))
-    # elif name == 'bupa':
-    #     data = pd.read_csv(join(data_path, 'Liver Disorders/bupa.csv'))
     if name == 'wine':
         data = pd.read_csv(join(data_path, 'Wine/wine.csv'), sep=';')
     elif name == 'speaker':
@@ -85,22 +61,10 @@ def load_data(name: str):
 
 if __name__ == '__main__':
     test_size = 0.2
-
-    # RF parameters
-    tree_size = 4  # number of leaves by tree
-    max_rules = 2000  # total number of rules generated from tree ensembles
-    nb_estimator = int(np.ceil(max_rules / tree_size))  # Number of tree
-
-    # AdBoost and GradientBoosting
-    learning_rate = 0.2
-
-    # Covering parameters
-    alpha = 1. / 2 - 1 / 100.
-    gamma = 0.95
-    lmax = 2
+    np.random.seed(2020)
 
     q = 10
-    nb_simu = 10
+    nb_simu = 20
     res_dict = {}
     #  Data parameters
     for data_name in ['speaker', 'student', 'wine', 'covertype']:
@@ -178,44 +142,14 @@ if __name__ == '__main__':
             part_rs = make_rs_from_r(rules_part, features.to_list(), X_train.min(axis=0),
                                      X_train.max(axis=0))
 
-            # pred_sirus = pd.read_csv(join(racine_path, 'sirus_pred.csv'))['x'].values
-            # pred_nh = pd.read_csv(join(racine_path, 'nh_pred.csv'))['x'].values
-            # rules_sirus = pd.read_csv(join(racine_path, 'sirus_rules.csv'))
-            # rules_nh = pd.read_csv(join(racine_path, 'nh_rules.csv'))
-            #
-            # sirus_rs = make_rs_from_r(rules_sirus, features.to_list(), X_train.min(axis=0),
-            #                           X_train.max(axis=0))
-            # nh_rs = make_rs_from_r(rules_nh, features.to_list(), X_train.min(axis=0),
-            #                        X_train.max(axis=0))
-
             subsample = min(0.5, (100 + 6 * np.sqrt(len(y_train))) / len(y_train))
 
             # ## Decision Tree
-            tree = DecisionTreeClassifier(max_leaf_nodes=20)
+            tree = DecisionTreeClassifier(max_leaf_nodes=10)
             tree.fit(X_train, y_train)
 
             tree_rules = extract_rules_from_tree(tree, features, X_train.min(axis=0),
-                                                 X_train.max(axis=0))
-
-            # # ## RuleFit
-            # rule_fit = rulefit.RuleFit(tree_size=tree_size,
-            #                            max_rules=max_rules,
-            #                            random_state=seed,
-            #                            max_iter=2000)
-            # rule_fit.fit(X_train, y_train)
-            #
-            # # ### RuleFit rules part
-            # rules = rule_fit.get_rules()
-            # rules = rules[rules.coef != 0].sort_values(by="support")
-            # rules = rules.loc[rules['type'] == 'rule']
-            #
-            # # ### RuleFit linear part
-            # lin = rule_fit.get_rules()
-            # lin = lin[lin.coef != 0].sort_values(by="support")
-            # lin = lin.loc[lin['type'] == 'linear']
-            #
-            # rulefit_rules = extract_rules_rulefit(rules, features, X_train.min(axis=0),
-            #                                       X_train.max(axis=0))
+                                                 X_train.max(axis=0), get_leaf=True)
 
             # ## Errors calculation
             pred_tree = tree.predict(X_test)
@@ -242,11 +176,11 @@ if __name__ == '__main__':
                                                    X_train.min(axis=0),
                                                    X_train.max(axis=0))]
 
-                tree = DecisionTreeClassifier(max_leaf_nodes=20)
+                tree = DecisionTreeClassifier(max_leaf_nodes=10)
                 tree.fit(X_train, y_train)
 
                 rs_dict['DT'] += [extract_rules_from_tree(tree, features, X_train.min(axis=0),
-                                                          X_train.max(axis=0))]
+                                                          X_train.max(axis=0), get_leaf=True)]
 
             simp = [simplicity(tree_rules), simplicity(ripper_rs), simplicity(part_rs)]
             simp = min(simp) / np.array(simp)
