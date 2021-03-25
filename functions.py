@@ -3,11 +3,11 @@ import copy
 import pandas as pd
 import numpy as np
 
-from CoveringAlgorithm.ruleset import RuleSet
-from CoveringAlgorithm.rule import Rule
-from CoveringAlgorithm.ruleconditions import RuleConditions
 
-from sklearn.metrics import r2_score
+from rule.rule import Rule
+from condition.hyperrectanglecondition import HyperrectangleCondition
+from ruleset.ruleset import RuleSet
+
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.tree import _tree
 
@@ -23,7 +23,7 @@ def predictivity_classif(y_hat, y):
 
 
 def simplicity(rs: Union[RuleSet, List[Rule]]) -> int:
-    return sum(map(lambda r: r.length, rs))
+    return sum(map(lambda r: len(r), rs))
 
 
 def find_bins(x, nb_bucket):
@@ -68,22 +68,22 @@ def find_bins(x, nb_bucket):
 
 
 def bound_to_bins(rule, q, X, bins_dict=None):
-    rcond = rule.conditions
+    rcond = rule.condition
     bmin_bins = []
     bmax_bins = []
     geq_min = True
     leq_min = True
     not_nan = True
-    for k in range(rule.length):
-        var_index = rcond.features_index[k]
+    for k in range(len(rule)):
+        var_index = rcond.features_indexes[k]
         xcol = X[:, var_index]
         if bins_dict is None:
             var_bins = find_bins(xcol, q)
         else:
-            var_bins = bins_dict[rcond.features_name[k]]
+            var_bins = bins_dict[rcond.features_names[k]]
 
-        bmin_bins += list(np.digitize(rcond.bmin[k:k + 1], var_bins))
-        bmax_bins += list(np.digitize(rcond.bmax[k:k + 1], var_bins))
+        bmin_bins += list(np.digitize(rcond.bmins[k:k + 1], var_bins))
+        bmax_bins += list(np.digitize(rcond.bmaxs[k:k + 1], var_bins))
 
         xcol = np.digitize(xcol, bins=var_bins)
 
@@ -95,8 +95,7 @@ def bound_to_bins(rule, q, X, bins_dict=None):
 
         not_nan &= np.isfinite(xcol)
 
-    new_cond = RuleConditions(rcond.features_name, rcond.features_index,
-                              bmin_bins, bmax_bins, rcond.xmin, rcond.xmax)
+    new_cond = HyperrectangleCondition(rcond.features_indexes, bmin_bins, bmax_bins, rcond.features_names)
     new_rule = Rule(new_cond)
     activation_vector = 1 * (geq_min & leq_min & not_nan)
 
@@ -130,8 +129,6 @@ def extract_rules_rulefit(rules: pd.DataFrame,
         features_index = []
         bmin = []
         bmax = []
-        xmax = []
-        xmin = []
 
         for sub_rule in rule_split:
             sub_rule = sub_rule.replace('=', '')
@@ -161,99 +158,12 @@ def extract_rules_rulefit(rules: pd.DataFrame,
                 bmax += [float(sub_rule[-1])]
                 bmin += [bmin_list[feat_id]]
 
-            xmax += [bmax_list[feat_id]]
-            xmin += [bmin_list[feat_id]]
-
-        new_cond = RuleConditions(features_name=features_name,
-                                  features_index=features_index,
-                                  bmin=bmin, bmax=bmax,
-                                  xmin=xmin, xmax=xmax)
+        new_cond = HyperrectangleCondition(features_indexes=features_index,
+                                           bmins=bmin, bmaxs=bmax,
+                                           features_names=features_name)
         new_rg = Rule(copy.deepcopy(new_cond))
         rule_list.append(new_rg)
 
-    return rule_list
-
-
-def extract_rules_from_tree(tree: Union[DecisionTreeClassifier, DecisionTreeRegressor],
-                            features: List[str],
-                            xmin: List[float],
-                            xmax: List[float],
-                            get_leaf: bool = False) -> List[Rule]:
-    dt = tree.tree_
-
-    def visitor(node, depth, cond=None, rule_list=None):
-        if rule_list is None:
-            rule_list = []
-        if dt.feature[node] != _tree.TREE_UNDEFINED:
-            # If
-            new_cond = RuleConditions([features[dt.feature[node]]],
-                                      [dt.feature[node]],
-                                      bmin=[xmin[dt.feature[node]]],
-                                      bmax=[dt.threshold[node]],
-                                      xmin=[xmin[dt.feature[node]]],
-                                      xmax=[xmax[dt.feature[node]]])
-            if cond is not None:
-                if dt.feature[node] not in cond.features_index:
-                    conditions_list = list(map(lambda c1, c2: c1 + c2, cond.get_attr(),
-                                               new_cond.get_attr()))
-
-                    new_cond = RuleConditions(features_name=conditions_list[0],
-                                              features_index=conditions_list[1],
-                                              bmin=conditions_list[2],
-                                              bmax=conditions_list[3],
-                                              xmax=conditions_list[5],
-                                              xmin=conditions_list[4])
-                else:
-                    new_bmax = dt.threshold[node]
-                    new_cond = copy.deepcopy(cond)
-                    place = cond.features_index.index(dt.feature[node])
-                    new_cond.bmax[place] = min(new_bmax, new_cond.bmax[place])
-
-            # print (Rule(new_cond))
-            new_rg = Rule(copy.deepcopy(new_cond))
-            if get_leaf is False:
-                rule_list.append(new_rg)
-
-            rule_list = visitor(dt.children_left[node], depth + 1,
-                                new_cond, rule_list)
-
-            # Else
-            new_cond = RuleConditions([features[dt.feature[node]]],
-                                      [dt.feature[node]],
-                                      bmin=[dt.threshold[node]],
-                                      bmax=[xmax[dt.feature[node]]],
-                                      xmin=[xmin[dt.feature[node]]],
-                                      xmax=[xmax[dt.feature[node]]])
-            if cond is not None:
-                if dt.feature[node] not in cond.features_index:
-                    conditions_list = list(map(lambda c1, c2: c1 + c2, cond.get_attr(),
-                                               new_cond.get_attr()))
-                    new_cond = RuleConditions(features_name=conditions_list[0],
-                                              features_index=conditions_list[1],
-                                              bmin=conditions_list[2],
-                                              bmax=conditions_list[3],
-                                              xmax=conditions_list[5],
-                                              xmin=conditions_list[4])
-                else:
-                    new_bmin = dt.threshold[node]
-                    new_bmax = xmax[dt.feature[node]]
-                    new_cond = copy.deepcopy(cond)
-                    place = new_cond.features_index.index(dt.feature[node])
-                    new_cond.bmin[place] = max(new_bmin, new_cond.bmin[place])
-                    new_cond.bmax[place] = max(new_bmax, new_cond.bmax[place])
-
-            new_rg = Rule(copy.deepcopy(new_cond))
-            if get_leaf is False:
-                rule_list.append(new_rg)
-
-            rule_list = visitor(dt.children_right[node], depth + 1, new_cond, rule_list)
-
-        elif get_leaf:
-            rule_list.append(Rule(copy.deepcopy(cond)))
-
-        return rule_list
-
-    rule_list = visitor(0, 1)
     return rule_list
 
 
@@ -288,8 +198,8 @@ def make_rs_from_r(df, features_list, xmin, xmax):
                 conditions[4] += [xmin[feature_id]]
                 conditions[5] += [xmax[feature_id]]
 
-            new_cond = RuleConditions(conditions[0], conditions[1], conditions[2], conditions[3],
-                                      xmin=conditions[4], xmax=conditions[5])
+            new_cond = HyperrectangleCondition(conditions[1], conditions[2], conditions[3],
+                                               conditions[0])
             rule_list.append(Rule(new_cond))
 
     return RuleSet(rule_list)

@@ -6,7 +6,7 @@ import subprocess
 import random
 
 from sklearn import preprocessing
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 from sklearn.tree import DecisionTreeClassifier
 
 from functions import predictivity_classif, simplicity, q_stability, find_bins,\
@@ -74,28 +74,27 @@ if __name__ == '__main__':
         res_dict['RIPPER'] = []
         res_dict['PART'] = []
 
-        for simu in range(nb_simu):
-            # ## Data Generation
-            dataset = load_data(data_name)
-            target = target_dict[data_name]
-            y = dataset[target]
-            X = dataset.drop(target, axis=1)
-            features = X.columns
-            X = X[features]
-            if data_name == 'student':
-                le = preprocessing.LabelEncoder()
-                for col in features:
-                    X[col] = le.fit_transform(X[col])
-            if data_name == 'covertype':
-                id_kept = random.sample(range(X.shape[0]), 10000)
-                X = X.iloc[id_kept]
-                y = y.iloc[id_kept]
+        dataset = load_data(data_name)
+        target = target_dict[data_name]
+        y = dataset[target]
+        X = dataset.drop(target, axis=1)
+        features = X.columns
+        X = X[features]
+        if data_name == 'student':
+            le = preprocessing.LabelEncoder()
+            for col in features:
+                X[col] = le.fit_transform(X[col])
+        if data_name == 'covertype':
+            id_kept = random.sample(range(X.shape[0]), 10000)
+            X = X.iloc[id_kept]
+            y = y.iloc[id_kept]
 
-            # ### Splitting data
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-            if test_size == 0.0:
-                X_test = X_train
-                y_test = y_train
+        kf = KFold(n_splits=nb_simu)
+        simu = 0
+        for train_index, test_index in kf.split(X):
+            # ## Data Generation
+            X_train, X_test = X.loc[train_index], X.loc[test_index]
+            y_train, y_test = y.loc[train_index], y.loc[test_index]
 
             X_train.to_csv(pathx, index=False)
             y_train.to_csv(pathy, index=False, header=False)
@@ -215,6 +214,8 @@ if __name__ == '__main__':
                                                q_stability(rs_dict['Part'][0], rs_dict['Part'][1],
                                                            X_train, q=q, bins_dict=bins_dict),
                                                simp[2]]], axis=0)
+            simu += 1
+
         # ## Results.
         print('Predictivity score')
         print('----------------------')
